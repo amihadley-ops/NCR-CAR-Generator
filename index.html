@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bennett — NCR / CAR Tracker</title>
+<style>
+  :root{
+    --navy:#1B2A4A; --gold:#C9A227; --gold-lt:#F0E6C8;
+    --red:#C0392B; --amber:#E67E22; --green:#27AE60; --grey:#F5F5F5;
+  }
+  *{box-sizing:border-box}
+  body{font-family:"Century Gothic","Futura",system-ui,sans-serif;margin:0;background:#EDEEF1;color:#1c1c1c}
+  header{background:var(--navy);color:var(--gold);padding:18px 26px;display:flex;justify-content:space-between;align-items:center}
+  header h1{margin:0;font-size:20px;letter-spacing:.5px}
+  header .sub{color:#fff;font-size:12px;opacity:.75}
+  .wrap{padding:20px 26px;max-width:1500px;margin:0 auto}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:8px}
+  .card{background:#fff;border-radius:10px;padding:14px 16px;border-left:5px solid var(--navy);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .card .n{font-size:26px;font-weight:bold;color:var(--navy)}
+  .card .l{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#666;margin-top:2px}
+  .card.red{border-color:var(--red)} .card.red .n{color:var(--red)}
+  .card.amber{border-color:var(--amber)} .card.amber .n{color:var(--amber)}
+  .card.gold{border-color:var(--gold)}
+
+  .tabs{display:flex;gap:4px;margin:18px 0 0}
+  .tab{padding:9px 20px;background:#DADCE1;border:none;border-radius:8px 8px 0 0;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;color:#555}
+  .tab.active{background:#fff;color:var(--navy)}
+
+  .panel{background:#fff;border-radius:0 10px 10px 10px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+  .toolbar input,.toolbar select{font-family:inherit;padding:7px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px}
+  .toolbar input[type=text]{min-width:200px}
+  button.add{background:var(--gold);color:var(--navy);border:none;padding:8px 16px;border-radius:6px;font-weight:bold;font-family:inherit;cursor:pointer;font-size:13px}
+  button.ghost{background:transparent;border:1px solid #ccc;padding:7px 12px;border-radius:6px;font-family:inherit;cursor:pointer;font-size:12px}
+
+  table{border-collapse:collapse;width:100%;font-size:12px}
+  th{background:var(--navy);color:#fff;padding:8px 6px;text-align:left;position:sticky;top:0;font-weight:bold}
+  td{padding:5px 6px;border-bottom:1px solid #eee;vertical-align:top}
+  tr:hover td{background:#FAFBFF}
+  td[contenteditable]{cursor:text}
+  td[contenteditable]:focus{outline:2px solid var(--gold);background:#fffdf5}
+  .flag{padding:2px 7px;border-radius:10px;font-size:11px;font-weight:bold;white-space:nowrap;display:inline-block}
+  .f-overdue{background:var(--red);color:#fff}
+  .f-aging{background:var(--amber);color:#fff}
+  .f-watch{background:var(--gold-lt);color:#6b5a15}
+  .f-ontrack{background:#E8F5E9;color:#1e6b3a}
+  .f-closed{background:var(--grey);color:#999}
+  .orphan{background:var(--red)!important;color:#fff}
+  .del{color:#bbb;cursor:pointer;font-weight:bold}
+  .del:hover{color:var(--red)}
+  select.status,select.src{font-family:inherit;font-size:11px;border:1px solid #ddd;border-radius:4px;padding:2px}
+  .muted{color:#888;font-size:11px;margin-top:10px}
+  .legend{font-size:11px;color:#666;margin:2px 0 10px}
+
+  .why-btn{background:var(--navy);color:var(--gold);border:none;border-radius:5px;font-family:inherit;font-size:10px;font-weight:bold;padding:3px 7px;cursor:pointer;white-space:nowrap;margin-left:4px}
+  .why-btn.done{background:var(--green);color:#fff}
+  .rc-wrap{display:flex;align-items:flex-start;gap:4px}
+  .rc-text{flex:1}
+
+  .overlay{position:fixed;inset:0;background:rgba(15,20,35,.55);display:none;align-items:center;justify-content:center;z-index:50}
+  .overlay.show{display:flex}
+  .modal{background:#fff;border-radius:12px;width:min(640px,92vw);max-height:88vh;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.3)}
+  .modal-head{background:var(--navy);color:var(--gold);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0}
+  .modal-head h2{margin:0;font-size:16px}
+  .modal-head .x{color:#fff;cursor:pointer;font-size:22px;line-height:1;background:none;border:none}
+  .modal-body{padding:18px 20px}
+  .prob{background:var(--gold-lt);border-left:4px solid var(--gold);padding:8px 12px;border-radius:6px;font-size:13px;margin-bottom:16px}
+  .why-step{margin-bottom:12px;position:relative;padding-left:34px}
+  .why-step::before{content:attr(data-n);position:absolute;left:0;top:2px;width:24px;height:24px;background:var(--navy);color:var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px}
+  .why-step label{font-size:11px;font-weight:bold;color:#555;text-transform:uppercase;letter-spacing:.4px}
+  .why-step textarea{width:100%;font-family:inherit;font-size:13px;padding:8px;border:1px solid #ccc;border-radius:6px;resize:vertical;min-height:38px;margin-top:3px}
+  .why-step textarea:focus{outline:2px solid var(--gold);border-color:var(--gold)}
+  .why-connector{height:10px;border-left:2px dashed #ccc;margin-left:11px}
+  .root-final{background:#E8F5E9;border-left:4px solid var(--green);padding:10px 12px;border-radius:6px;margin-top:14px;font-size:13px}
+  .root-final label{font-size:11px;font-weight:bold;color:#1e6b3a;text-transform:uppercase}
+  .root-final textarea{width:100%;font-family:inherit;font-size:13px;padding:8px;border:1px solid var(--green);border-radius:6px;margin-top:4px;resize:vertical;min-height:44px}
+  .modal-foot{padding:14px 20px;border-top:1px solid #eee;display:flex;gap:8px;justify-content:flex-end;position:sticky;bottom:0;background:#fff}
+  .modal-foot button{font-family:inherit;font-size:13px;padding:8px 18px;border-radius:6px;cursor:pointer;border:none}
+  .btn-save{background:var(--gold);color:var(--navy);font-weight:bold}
+  .btn-cancel{background:transparent;border:1px solid #ccc}
+</style>
+</head>
+<body>
+<header>
+  <h1>BENNETT &nbsp;|&nbsp; NCR / CAR Tracker</h1>
+  <span class="sub" id="today"></span>
+</header>
+
+<div class="wrap">
+  <div class="cards" id="cards"></div>
+
+  <div class="tabs">
+    <button class="tab active" data-t="ncr">NCR Log</button>
+    <button class="tab" data-t="car">CAR Log</button>
+  </div>
+
+  <!-- NCR PANEL -->
+  <div class="panel" id="panel-ncr">
+    <div class="toolbar">
+      <input type="text" id="ncr-search" placeholder="Search NCRs…">
+      <select id="ncr-filter">
+        <option value="">All statuses</option>
+        <option>Open</option><option>In Progress</option>
+        <option>Pending Disposition</option><option>Closed</option>
+      </select>
+      <button class="add" onclick="addNCR()">+ New NCR</button>
+      <button class="ghost" onclick="document.getElementById('ncr-upload').click()">⬆ Upload NCR (.docx)</button>
+      <input type="file" id="ncr-upload" accept=".docx" multiple style="display:none" onchange="handleUpload(this,'ncr')">
+      <button class="ghost" onclick="document.getElementById('ncr-import').click()">↦ Import from Generator</button>
+      <input type="file" id="ncr-import" accept=".ncrcar,.json" multiple style="display:none" onchange="handleImport(this,'ncr')">
+      <button class="ghost" onclick="exportCSV('ncr')">Export CSV</button>
+    </div>
+    <div class="legend">Aging: <b>Watch</b> at 14 days · <b>Aging</b> at 30 days · <b>Overdue</b> past Target Close.</div>
+    <div style="overflow:auto;max-height:60vh">
+      <table id="ncr-table"></table>
+    </div>
+  </div>
+
+  <!-- CAR PANEL -->
+  <div class="panel" id="panel-car" style="display:none">
+    <div class="toolbar">
+      <input type="text" id="car-search" placeholder="Search CARs…">
+      <select id="car-filter">
+        <option value="">All statuses</option>
+        <option>Open</option><option>In Progress</option>
+        <option>Pending Verification</option><option>Closed</option>
+      </select>
+      <button class="add" onclick="addCAR()">+ New CAR</button>
+      <button class="ghost" onclick="document.getElementById('car-upload').click()">⬆ Upload CAR (.docx)</button>
+      <input type="file" id="car-upload" accept=".docx" multiple style="display:none" onchange="handleUpload(this,'car')">
+      <button class="ghost" onclick="document.getElementById('car-import').click()">↦ Import from Generator</button>
+      <input type="file" id="car-import" accept=".ncrcar,.json" multiple style="display:none" onchange="handleImport(this,'car')">
+      <button class="ghost" onclick="exportCSV('car')">Export CSV</button>
+    </div>
+    <div class="legend">One NCR can spawn multiple CARs — set <b>Parent NCR#</b> to link. Unmatched parents flag red. Aging: <b>Watch</b> 21d · <b>Aging</b> 45d · <b>Overdue</b> past Target Close.</div>
+    <div style="overflow:auto;max-height:60vh">
+      <table id="car-table"></table>
+    </div>
+  </div>
+
+  <div class="muted">Data saves automatically in this browser. Export to CSV for backup or to load into Bennett_Tracker.xlsx.</div>
+</div>
+
+<!-- 5-WHY MODAL -->
+<div class="overlay" id="why-overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>5-Why Root Cause Analysis</h2>
+      <button class="x" onclick="closeWhy()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="prob" id="why-prob"></div>
+      <div id="why-steps"></div>
+      <div class="root-final">
+        <label>Root Cause (writes back to CAR Log)</label>
+        <textarea id="why-root" placeholder="Confirmed root cause — usually the last Why answered."></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeWhy()">Cancel</button>
+      <button class="btn-save" onclick="saveWhy()">Save analysis</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const NCR_COLS = ["NCR #","Opened","Customer","PO / Job #","Part Number","Process","Description","Qty","Disposition","Owner","Target Close","Status","Closed"];
+const CAR_COLS = ["CAR #","Parent NCR #","Opened","Source","Problem","Containment","Root Cause","Corrective Action","Owner","Target Close","Verification","Status","Closed"];
+const NCR_STATUS = ["Open","In Progress","Pending Disposition","Closed"];
+const CAR_STATUS = ["Open","In Progress","Pending Verification","Closed"];
+const CAR_SOURCE = ["Internal NCR","Customer SCAR","Audit Finding","Nadcap Finding","Supplier"];
+
+const KEY="bennett_ncr_car_v1";
+let db = load();
+
+function load(){
+  try{const s=JSON.parse(localStorage.getItem(KEY)); if(s){ if(!s.whys) s.whys={}; return s;}}catch(e){}
+  return {ncr:[seedNCR()], car:[seedCAR()], whys:{}};
+}
+function save(){ localStorage.setItem(KEY, JSON.stringify(db)); render(); }
+
+function seedNCR(){return{"NCR #":"NCR-2026-001","Opened":"2026-07-15","Customer":"Pratt & Whitney","PO / Job #":"PO-88421 / J-3305","Part Number":"PWA-1202-4","Process":"Vacuum Heat Treat","Description":"Hardness below AMS 2759 min after temper — HRC 38 vs 40-44","Qty":"6","Disposition":"Rework - retemper","Owner":"A. Hadley","Target Close":"2026-07-29","Status":"Open","Closed":""};}
+function seedCAR(){return{"CAR #":"CAR-2026-001","Parent NCR #":"NCR-2026-001","Opened":"2026-07-16","Source":"Internal NCR","Problem":"Retemper cycle undershot target hardness","Containment":"Quarantined 6 pcs; 100% screen","Root Cause":"Furnace 705 setpoint drift — TC out of cal","Corrective Action":"Recal TC, mid-cycle verification per AMS 2750","Owner":"A. Hadley","Target Close":"2026-08-05","Verification":"Re-run + 30-day audit","Status":"In Progress","Closed":""};}
+
+const today=()=>new Date(new Date().toDateString());
+document.getElementById('today').textContent = today().toLocaleDateString();
+
+function daysOpen(o,c){ if(!o) return null; const end=c?new Date(c):today(); return Math.floor((end-new Date(o))/86400000); }
+
+function flag(row,type){
+  if(row.Status==="Closed") return {t:"CLOSED",c:"f-closed"};
+  if(!row.Opened) return {t:"",c:""};
+  const d=daysOpen(row.Opened,row.Closed);
+  const tc=row["Target Close"];
+  if(tc && today()>new Date(tc)) return {t:"OVERDUE ("+Math.floor((today()-new Date(tc))/86400000)+"d)",c:"f-overdue"};
+  const ag= type==="ncr"?30:45, wa= type==="ncr"?14:21;
+  if(d>=ag) return {t:"AGING "+ag+"+",c:"f-aging"};
+  if(d>=wa) return {t:"WATCH "+wa+"+",c:"f-watch"};
+  return {t:"ON TRACK",c:"f-ontrack"};
+}
+
+function cell(val,field,idx,type,editable=true){
+  return `<td contenteditable="${editable}" data-i="${idx}" data-f="${field}" data-t="${type}">${escapeHtml(val||"")}</td>`;
+}
+function escapeHtml(s){return String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));}
+
+function statusSelect(row,idx,type){
+  const opts=(type==="ncr"?NCR_STATUS:CAR_STATUS).map(s=>`<option ${s===row.Status?'selected':''}>${s}</option>`).join('');
+  return `<td><select class="status" onchange="setField(${idx},'Status',this.value,'${type}')">${opts}</select></td>`;
+}
+function sourceSelect(row,idx){
+  const opts=CAR_SOURCE.map(s=>`<option ${s===row.Source?'selected':''}>${s}</option>`).join('');
+  return `<td><select class="src" onchange="setField(${idx},'Source',this.value,'car')">${opts}</select></td>`;
+}
+
+function render(){
+  renderCards();
+  renderNCR();
+  renderCAR();
+}
+
+function renderCards(){
+  const nOpen=db.ncr.filter(r=>r.Status!=="Closed").length;
+  const nOver=db.ncr.filter(r=>flag(r,"ncr").c==="f-overdue").length;
+  const nAge=db.ncr.filter(r=>flag(r,"ncr").c==="f-aging").length;
+  const cOpen=db.car.filter(r=>r.Status!=="Closed").length;
+  const cOver=db.car.filter(r=>flag(r,"car").c==="f-overdue").length;
+  const cAge=db.car.filter(r=>flag(r,"car").c==="f-aging").length;
+  const cards=[
+    ["NCRs Open",nOpen,""],["NCR Overdue",nOver,nOver?"red":""],["NCR Aging",nAge,nAge?"amber":"gold"],
+    ["CARs Open",cOpen,""],["CAR Overdue",cOver,cOver?"red":""],["CAR Aging",cAge,cAge?"amber":"gold"],
+  ];
+  document.getElementById('cards').innerHTML = cards.map(([l,n,c])=>
+    `<div class="card ${c}"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
+}
+
+function renderTable(type){
+  const cols = type==="ncr"?NCR_COLS:CAR_COLS;
+  const rows = db[type];
+  const search=(document.getElementById(type+'-search').value||"").toLowerCase();
+  const filt=document.getElementById(type+'-filter').value;
+  const parents=new Set(db.ncr.map(r=>r["NCR #"]));
+  let head="<tr><th></th>"+cols.map(c=>`<th>${c}</th>`).join('')+"<th>Days</th><th>Aging</th></tr>";
+  let body="";
+  rows.forEach((row,idx)=>{
+    const blob=Object.values(row).join(" ").toLowerCase();
+    if(search && !blob.includes(search)) return;
+    if(filt && row.Status!==filt) return;
+    const f=flag(row,type);
+    const d=daysOpen(row.Opened,row.Closed);
+    let tds="";
+    cols.forEach(col=>{
+      if(col==="Status"){ tds+=statusSelect(row,idx,type); }
+      else if(col==="Source"){ tds+=sourceSelect(row,idx); }
+      else if(col==="Parent NCR #"){
+        const orphan = row[col] && !parents.has(row[col]);
+        tds+=`<td contenteditable data-i="${idx}" data-f="${col}" data-t="${type}" class="${orphan?'orphan':''}" title="${orphan?'No matching NCR':''}">${escapeHtml(row[col]||"")}</td>`;
+      }
+      else if(col==="Root Cause" && type==="car"){
+        const id=row["CAR #"]||"";
+        const has = db.whys[id] && db.whys[id].some(w=>w&&w.trim());
+        tds+=`<td><div class="rc-wrap"><span class="rc-text" contenteditable data-i="${idx}" data-f="${col}" data-t="car">${escapeHtml(row[col]||"")}</span><button class="why-btn ${has?'done':''}" onclick="openWhy(${idx})" title="5-Why analysis">${has?'5-Why ✓':'5-Why'}</button></div></td>`;
+      }
+      else tds+=cell(row[col],col,idx,type);
+    });
+    body+=`<tr><td class="del" onclick="delRow(${idx},'${type}')">×</td>${tds}<td style="text-align:center">${d==null?"":d}</td><td><span class="flag ${f.c}">${f.t}</span></td></tr>`;
+  });
+  document.getElementById(type+'-table').innerHTML=head+body;
+}
+const renderNCR=()=>renderTable('ncr');
+const renderCAR=()=>renderTable('car');
+
+document.addEventListener('input',e=>{
+  const td=e.target.closest('[contenteditable]');
+  if(!td||!td.dataset.f) return;
+  const {i,f,t}=td.dataset;
+  const val=td.textContent.trim();
+  if(t==="car" && f==="CAR #"){
+    const old=db.car[+i]["CAR #"];
+    if(old && db.whys[old] && old!==val){ db.whys[val]=db.whys[old]; delete db.whys[old]; }
+  }
+  db[t][+i][f]=val;
+  localStorage.setItem(KEY,JSON.stringify(db));
+  // light refresh of cards + flags without stealing focus
+  clearTimeout(window._rt); window._rt=setTimeout(()=>{renderCards(); if(f==="Parent NCR #"||f==="Opened"||f==="Target Close"||f==="Closed") renderTable(t);},600);
+});
+
+function setField(i,f,v,t){ db[t][i][f]=v; save(); }
+function delRow(i,t){ if(confirm("Delete this row?")){ db[t].splice(i,1); save(); } }
+
+function nextId(type){
+  const pre=type==="ncr"?"NCR":"CAR";
+  const yr=new Date().getFullYear();
+  const nums=db[type].map(r=>{const m=(r[type==="ncr"?"NCR #":"CAR #"]||"").match(/-(\d+)$/);return m?+m[1]:0;});
+  const n=(Math.max(0,...nums)+1).toString().padStart(3,"0");
+  return `${pre}-${yr}-${n}`;
+}
+function addNCR(){
+  const r={}; NCR_COLS.forEach(c=>r[c]="");
+  r["NCR #"]=nextId("ncr"); r.Opened=today().toISOString().slice(0,10); r.Status="Open";
+  db.ncr.unshift(r); save();
+}
+function addCAR(){
+  const r={}; CAR_COLS.forEach(c=>r[c]="");
+  r["CAR #"]=nextId("car"); r.Opened=today().toISOString().slice(0,10); r.Source="Internal NCR"; r.Status="Open";
+  db.car.unshift(r); save();
+}
+
+function exportCSV(type){
+  const cols=type==="ncr"?NCR_COLS:CAR_COLS;
+  const whyCols = type==="car"?["Why 1","Why 2","Why 3","Why 4","Why 5"]:[];
+  const extra=["Days Open","Aging Flag"];
+  const head=[...cols,...whyCols,...extra];
+  const lines=[head.join(",")];
+  db[type].forEach(row=>{
+    const f=flag(row,type); const d=daysOpen(row.Opened,row.Closed);
+    const vals=cols.map(c=>`"${(row[c]||"").replace(/"/g,'""')}"`);
+    if(type==="car"){
+      const chain=(db.whys[row["CAR #"]]||[]);
+      for(let i=0;i<5;i++) vals.push(`"${(chain[i]||"").replace(/"/g,'""')}"`);
+    }
+    vals.push(d==null?"":d, `"${f.t}"`);
+    lines.push(vals.join(","));
+  });
+  const blob=new Blob([lines.join("\n")],{type:"text/csv"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download=`Bennett_${type.toUpperCase()}_${today().toISOString().slice(0,10)}.csv`; a.click();
+}
+
+// ---- 5-Why ----
+let whyCarIdx=null;
+function openWhy(idx){
+  whyCarIdx=idx;
+  const row=db.car[idx];
+  const id=row["CAR #"]||"";
+  const chain = (db.whys[id]&&db.whys[id].slice())||["","","","","",""]; // 5 whys + root
+  while(chain.length<6) chain.push("");
+  document.getElementById('why-prob').innerHTML =
+    `<b>${escapeHtml(row["CAR #"]||"CAR")}</b> — ${escapeHtml(row.Problem||"(no problem statement)")}` +
+    (row["Parent NCR #"]?` &nbsp;·&nbsp; Parent: ${escapeHtml(row["Parent NCR #"])}`:"");
+  const prompts=["Why did the problem occur?","Why did that happen?","Why did that happen?","Why did that happen?","Why did that happen? (usually the root)"];
+  document.getElementById('why-steps').innerHTML = prompts.map((p,i)=>
+    `${i>0?'<div class="why-connector"></div>':''}
+     <div class="why-step" data-n="${i+1}">
+       <label>Why ${i+1} — ${p}</label>
+       <textarea data-w="${i}">${escapeHtml(chain[i]||"")}</textarea>
+     </div>`).join('');
+  // prefill root: existing chain root, else current Root Cause cell, else last why
+  document.getElementById('why-root').value = chain[5] || row["Root Cause"] || chain[4] || "";
+  document.getElementById('why-overlay').classList.add('show');
+}
+function closeWhy(){ document.getElementById('why-overlay').classList.remove('show'); whyCarIdx=null; }
+function saveWhy(){
+  if(whyCarIdx==null) return;
+  const row=db.car[whyCarIdx];
+  const id=row["CAR #"]||"";
+  const chain=[...document.querySelectorAll('#why-steps textarea')].map(t=>t.value.trim());
+  const root=document.getElementById('why-root').value.trim();
+  chain[5]=root;
+  db.whys[id]=chain;
+  // write root cause back into the CAR row
+  const filledLast=[...chain.slice(0,5)].reverse().find(x=>x)||"";
+  db.car[whyCarIdx]["Root Cause"] = root || filledLast;
+  save();
+  closeWhy();
+}
+document.getElementById('why-overlay').addEventListener('click',e=>{ if(e.target.id==='why-overlay') closeWhy(); });
+document.addEventListener('keydown',e=>{ if(e.key==="Escape") closeWhy(); });
+
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  const which=t.dataset.t;
+  document.getElementById('panel-ncr').style.display = which==="ncr"?"":"none";
+  document.getElementById('panel-car').style.display = which==="car"?"":"none";
+});
+['ncr','car'].forEach(t=>{
+  document.getElementById(t+'-search').oninput=()=>renderTable(t);
+  document.getElementById(t+'-filter').onchange=()=>renderTable(t);
+});
+
+// ================= DOCX UPLOAD PARSER =================
+function txt(node){ return (node.textContent||"").replace(/\s+/g," ").trim(); }
+
+// ---- native offline .docx reader (no JSZip / no CDN) ----
+async function _inflateRaw(bytes){
+  const ds=new DecompressionStream("deflate-raw");
+  const stream=new Blob([bytes]).stream().pipeThrough(ds);
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+async function _readDocxEntry(fileBytes,wantName){
+  const dv=new DataView(fileBytes.buffer,fileBytes.byteOffset,fileBytes.byteLength);
+  const dec=new TextDecoder(); let off=0;
+  while(off+4<=fileBytes.length){
+    if(dv.getUint32(off,true)!==0x04034b50) break;
+    const method=dv.getUint16(off+8,true);
+    const csize=dv.getUint32(off+18,true);
+    const nlen=dv.getUint16(off+26,true);
+    const elen=dv.getUint16(off+28,true);
+    const name=dec.decode(fileBytes.subarray(off+30,off+30+nlen));
+    const dataStart=off+30+nlen+elen;
+    const comp=fileBytes.subarray(dataStart,dataStart+csize);
+    if(name===wantName) return method===0?comp:await _inflateRaw(comp);
+    off=dataStart+csize;
+  }
+  throw new Error("word/document.xml not found — not a Word file?");
+}
+function _unescapeXml(s){return s.replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#(\d+);/g,(_,n)=>String.fromCharCode(+n));}
+function _parseTables(xml){
+  const tables=[];
+  const tbls=xml.match(/<w:tbl>[\s\S]*?<\/w:tbl>/g)||[];
+  for(const tblXml of tbls){
+    const rows=[];
+    const trs=tblXml.match(/<w:tr\b[\s\S]*?<\/w:tr>/g)||[];
+    for(const trXml of trs){
+      const cells=[];
+      const tcs=trXml.match(/<w:tc\b[\s\S]*?<\/w:tc>/g)||[];
+      for(const tcXml of tcs){
+        const texts=[...tcXml.matchAll(/<w:t\b[^>]*>([\s\S]*?)<\/w:t>/g)].map(x=>_unescapeXml(x[1]));
+        cells.push(texts.join("").replace(/\s+/g," ").trim());
+      }
+      if(cells.length) rows.push(cells);
+    }
+    tables.push(rows);
+  }
+  return tables;
+}
+
+async function parseDocx(file){
+  const bytes=new Uint8Array(await file.arrayBuffer());
+  const xmlStr=new TextDecoder().decode(await _readDocxEntry(bytes,"word/document.xml"));
+  const tables=_parseTables(xmlStr);
+  if(!tables.length) throw new Error("no tables — not a Bennett form?");
+
+  const header={};
+  const grid=tables[0].flat();
+  const HEADER_LABELS=["ncr #","car #","date","customer","po","po #","part no","part no.","bht","bht #","spec","spec(s)","process","detected by","stage","location","ref"];
+  for(let i=0;i<grid.length;i++){
+    const raw=grid[i].replace(/\u00a0/g," ").trim();
+    // colon style: "Label:" then value in next cell
+    const m=raw.match(/^(.*?):\s*$/);
+    if(m){ header[m[1].trim().toLowerCase()]=(grid[i+1]||"").trim(); continue; }
+    // label/value-cell style: a known header label, value in the next cell
+    const low=raw.toLowerCase();
+    if(HEADER_LABELS.includes(low)){ header[low]=(grid[i+1]||"").trim(); }
+  }
+  const H=k=>{k=k.toLowerCase(); for(const key in header){ if(key.startsWith(k)) return header[key]; } return "";};
+  const findTable=(label)=>tables.find(t=>t.length && (t[0][0]||"").toLowerCase().includes(label.toLowerCase()));
+
+  const whyTbl=findTable("problem statement");
+  const whys=["","","","","",""];
+  if(whyTbl){
+    whyTbl.forEach(row=>{
+      const wm=(row[0]||"").toLowerCase().match(/why\s*(\d)/);
+      if(wm) whys[+wm[1]-1]=(row[1]||"").trim();
+    });
+    whys[5]=[...whys.slice(0,5)].reverse().find(x=>x)||"";
+  }
+
+  let disposition="";
+  const dispTbl=findTable("disposition");
+  if(dispTbl) for(const row of dispTbl){
+    if(/[☑☒✓✔]/.test(row[0]||"")){ disposition=row[0].replace(/[☐☑☒✓✔]/g,"").trim(); break; }
+  }
+
+  let description="";
+  const reqTbl=findTable("requirement");
+  if(reqTbl && reqTbl.length>1) description=(reqTbl[1][1]||reqTbl[1][0]||"").trim();
+
+  let qty="";
+  const contTbl=findTable("hold/segregation")||findTable("quantity affected");
+  if(contTbl){ const q=contTbl.find(r=>/quantity affected/i.test(r[0]||"")); if(q) qty=(q[1]||"").trim(); }
+
+  let containment="";
+  const carCont=findTable("containment action");
+  if(carCont && carCont.length) containment=(carCont[0][1]||"").trim();
+
+  return { header:H, whys, disposition, description, qty, containment,
+           problem: whyTbl?(whyTbl[0][1]||"").trim():"" };
+}
+
+async function handleUpload(input,type){
+  const files=[...input.files]; input.value="";
+  let added=0, failed=[];
+  for(const f of files){
+    try{ const p=await parseDocx(f); (type==="ncr"?addParsedNCR:addParsedCAR)(p); added++; }
+    catch(e){ failed.push(f.name+" ("+e.message+")"); }
+  }
+  save();
+  let msg=`Imported ${added} ${type.toUpperCase()}${added!==1?"s":""}. Review the new row(s) for anything the form left blank.`;
+  if(failed.length) msg+="\n\nCouldn't parse:\n- "+failed.join("\n- ");
+  alert(msg);
+}
+
+// ---- Import from the NCR/CAR Generator (.ncrcar / .json) ----
+// The generator writes the same field shape parseDocx() returns, so we
+// rebuild the `p` accessor object and reuse addParsedNCR/addParsedCAR.
+async function handleImport(input,type){
+  const files=[...input.files]; input.value="";
+  let added=0, failed=[];
+  for(const f of files){
+    try{
+      const data=JSON.parse(await f.text());
+      const recs = Array.isArray(data)?data:[data];
+      for(const rec of recs){
+        const kind = (rec.kind||type).toLowerCase()==="car" ? "car" : "ncr";
+        const hmap = {};
+        for(const k in (rec.header||{})) hmap[k.toLowerCase()] = rec.header[k];
+        const p = {
+          header:(k)=>{ k=k.toLowerCase(); for(const key in hmap){ if(key.startsWith(k)) return hmap[key]; } return ""; },
+          whys: rec.whys || ["","","","","",""],
+          disposition: rec.disposition || "",
+          description: rec.description || "",
+          qty: rec.qty || "",
+          containment: rec.containment || "",
+          problem: rec.problem || "",
+        };
+        if(p.whys.length<6) p.whys=[...p.whys,"","","","","",""].slice(0,6);
+        (kind==="ncr"?addParsedNCR:addParsedCAR)(p);
+        added++;
+      }
+    }catch(e){ failed.push(f.name+" ("+e.message+")"); }
+  }
+  save();
+  let msg=`Imported ${added} record${added!==1?"s":""} from the generator. Review the new row(s) for anything left blank.`;
+  if(failed.length) msg+="\n\nCouldn't import:\n- "+failed.join("\n- ");
+  alert(msg);
+}
+
+function addParsedNCR(p){
+  const r={}; NCR_COLS.forEach(c=>r[c]="");
+  r["NCR #"]=p.header("ncr #")||nextId("ncr");
+  r.Opened=normDate(p.header("date"));
+  r.Customer=p.header("customer");
+  r["PO / Job #"]=p.header("po");
+  r["Part Number"]=p.header("part no");
+  r.Process=p.header("process");
+  r.Description=p.description||p.problem;
+  r.Qty=p.qty; r.Disposition=p.disposition;
+  r["Root Cause"]=p.whys[5]||""; r.Status="Open";
+  db.ncr.unshift(r);
+}
+function addParsedCAR(p){
+  const r={}; CAR_COLS.forEach(c=>r[c]="");
+  r["CAR #"]=nextId("car");
+  r["Parent NCR #"]=p.header("ncr #");
+  r.Opened=normDate(p.header("date"));
+  r.Source="Internal NCR";
+  r.Problem=p.problem||p.description;
+  r.Containment=p.containment;
+  r["Root Cause"]=p.whys[5]||""; r.Status="Open";
+  db.car.unshift(r);
+  if(p.whys.some(w=>w&&w.trim())) db.whys[r["CAR #"]]=p.whys;
+}
+function normDate(s){
+  if(!s) return ""; s=s.trim();
+  const m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if(m){ let[_,mo,da,yr]=m; if(yr.length===2) yr="20"+yr; return `${yr}-${mo.padStart(2,"0")}-${da.padStart(2,"0")}`; }
+  return s;
+}
+
+render();
+</script>
+</body>
+</html>
