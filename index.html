@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bennett NCR / CAR Generator</title>
+<style>
+  :root { --sky:#0284c7; --sky-d:#0369a1; --violet:#7c3aed; --violet-d:#6d28d9; --line:#cbd5e1; --ink:#1e293b; --muted:#64748b; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#f1f5f9; color:var(--ink); font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; font-size:14px; }
+  header.app { position:sticky; top:0; z-index:10; background:rgba(255,255,255,.92); backdrop-filter:blur(6px); border-bottom:1px solid #e2e8f0; }
+  .bar { max-width:920px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 16px; flex-wrap:wrap; }
+  .bar .left { display:flex; align-items:center; gap:12px; }
+  .bar img { height:32px; }
+  .divider { width:1px; height:30px; background:#e2e8f0; }
+  .toggle { display:inline-flex; border:1px solid var(--line); border-radius:9px; padding:2px; font-weight:600; }
+  .toggle button { border:0; background:transparent; color:var(--muted); padding:5px 14px; border-radius:7px; cursor:pointer; font-weight:600; font-size:14px; }
+  .toggle button.active { background:var(--sky); color:#fff; }
+  .actions { display:flex; gap:8px; flex-wrap:wrap; }
+  .btn { display:inline-flex; align-items:center; gap:6px; border-radius:9px; padding:7px 13px; font-weight:600; font-size:14px; cursor:pointer; border:1px solid transparent; }
+  .btn-violet { background:var(--violet); color:#fff; } .btn-violet:hover { background:var(--violet-d); }
+  .btn-sky { background:var(--sky); color:#fff; } .btn-sky:hover { background:var(--sky-d); }
+  .btn-ghost { background:#fff; color:#334155; border-color:var(--line); } .btn-ghost:hover { background:#f8fafc; }
+  .btn-track { background:#1B2A4A; color:#C9A227; } .btn-track:hover { background:#24365e; }
+  .btn:disabled { opacity:.5; cursor:default; }
+  main { max-width:920px; margin:0 auto; padding:22px 16px; }
+  .subtitle { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:14px; margin-bottom:14px; }
+  .banner { display:flex; align-items:center; gap:8px; border-radius:9px; padding:9px 12px; font-size:14px; margin-bottom:14px; }
+  .banner.err { background:#fef2f2; color:#b91c1c; } .banner.info { background:#f5f3ff; color:#6d28d9; }
+  section.card { background:#fff; border:1px solid #e2e8f0; border-radius:13px; padding:16px; box-shadow:0 1px 2px rgba(0,0,0,.04); margin-bottom:14px; }
+  section.card h3 { margin:0 0 12px; font-size:14px; font-weight:700; }
+  section.card h3 .cite { font-weight:400; font-style:italic; color:#94a3b8; font-size:11px; margin-left:6px; }
+  .grid { display:grid; grid-template-columns:1fr; gap:12px; }
+  @media(min-width:640px){ .grid.two { grid-template-columns:1fr 1fr; } .wide { grid-column:1 / -1; } }
+  label.f { display:flex; flex-direction:column; gap:4px; }
+  label.f > span { font-size:12px; font-weight:600; color:#475569; }
+  label.f > span .hint { font-weight:400; color:#94a3b8; margin-left:4px; }
+  input, textarea { border:1px solid var(--line); border-radius:7px; padding:7px 9px; font-size:14px; font-family:inherit; outline:none; resize:vertical; width:100%; }
+  input:focus, textarea:focus { border-color:var(--sky); box-shadow:0 0 0 1px var(--sky); }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip { border:1px solid var(--line); background:#fff; color:#475569; border-radius:999px; padding:5px 12px; font-size:12px; font-weight:500; cursor:pointer; }
+  .chip.on { border-color:var(--sky); background:#e0f2fe; color:var(--sky-d); }
+  .rows { display:flex; flex-direction:column; gap:8px; }
+  .row { display:flex; align-items:flex-start; gap:8px; }
+  .row .cells { display:grid; gap:8px; flex:1; }
+  .row .rm { margin-top:5px; border:0; background:transparent; color:#94a3b8; cursor:pointer; padding:5px; border-radius:6px; font-size:16px; line-height:1; }
+  .row .rm:hover { background:#fef2f2; color:#ef4444; }
+  .addrow { display:inline-flex; align-items:center; gap:4px; border:0; background:transparent; color:var(--sky-d); font-weight:600; font-size:12px; cursor:pointer; padding:2px 0; }
+  .foot { text-align:center; color:#94a3b8; font-size:12px; padding:6px 0 40px; }
+  .spin { display:inline-block; width:14px; height:14px; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:spin .7s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+/* Bennett letterhead logo, embedded so exports carry it. */
+const LOGO_B64 = "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";
+
+// ---------- shared header fields (identical on both forms) ----------
+const HEADER_FIELDS = [
+  { key: "ncr", label: "NCR #" },
+  { key: "date", label: "Date" },
+  { key: "customer", label: "Customer" },
+  { key: "po", label: "PO #" },
+  { key: "part", label: "Part No." },
+  { key: "bht", label: "BHT #" },
+  { key: "spec", label: "Specification(s)" },
+  { key: "process", label: "Process" },
+  { key: "detectedBy", label: "Detected By" },
+  { key: "stage", label: "Detection Stage", hint: "Incoming / In-Process / Final / Post-Delivery" },
+  { key: "location", label: "Location" },
+  { key: "reference", label: "Reference (WO/Traveler)" },
+];
+
+const DISPOSITIONS = ["Use-as-is (Concession)", "Rework", "Repair", "Scrap", "Return to Supplier"];
+
+const emptyHeader = () => Object.fromEntries(HEADER_FIELDS.map((f) => [f.key, ""]));
+
+const blankState = (kind) => ({
+  header: emptyHeader(),
+  // narrative
+  requirement: "",
+  actualCondition: "",
+  qtyAffected: "",
+  serialLot: "",
+  // containment
+  containment: "",
+  holdMethod: "",
+  customerNotified: "",
+  containmentDate: "",
+  containmentOwner: "",
+  // disposition (NCR)
+  disposition: "",
+  dispositionAuthority: "",
+  dispositionRationale: "",
+  // RCA
+  problem: "",
+  whys: ["", "", "", "", ""],
+  // CAP (CAR)
+  correctiveActions: [{ action: "", owner: "", due: "" }],
+  // preventive
+  preventive: [{ action: "", docRev: "", effective: "" }],
+  // verification
+  verifyMethod: "",
+  verifyResults: "",
+  verifyBy: "",
+  // records
+  records: [{ type: "", ref: "" }],
+  notes: "",
+});
+
+// =====================================================================
+// docx builder — raw OOXML, zipped in-browser with no external dependencies
+// =====================================================================
+const TWIP = { full: 9360 }; // usable width for US Letter w/ 1" margins-ish
+
+function esc(s) {
+  return String(s || "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function para(text, opts = {}) {
+  const { bold, size = 20, italic, color, align, spacingAfter = 60 } = opts;
+  const runs = String(text ?? "").split("\n").map((line, i) => {
+    const brk = i > 0 ? '<w:br/>' : "";
+    return `<w:r><w:rPr>${bold ? "<w:b/>" : ""}${italic ? "<w:i/>" : ""}${color ? `<w:color w:val="${color}"/>` : ""}<w:sz w:val="${size}"/><w:szCs w:val="${size}"/></w:rPr>${brk}<w:t xml:space="preserve">${esc(line)}</w:t></w:r>`;
+  }).join("");
+  return `<w:p><w:pPr><w:spacing w:after="${spacingAfter}"/>${align ? `<w:jc w:val="${align}"/>` : ""}</w:pPr>${runs}</w:p>`;
+}
+
+function sectionHeading(text, cite) {
+  return `<w:p><w:pPr><w:spacing w:before="180" w:after="60"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="22"/></w:rPr><w:t xml:space="preserve">${esc(text)}</w:t></w:r>${cite ? `<w:r><w:rPr><w:i/><w:sz w:val="16"/><w:color w:val="666666"/></w:rPr><w:t xml:space="preserve">  ${esc(cite)}</w:t></w:r>` : ""}</w:p>`;
+}
+
+function cell(content, widthTwip, opts = {}) {
+  const { shade, bold, size = 20 } = opts;
+  const body = Array.isArray(content)
+    ? content.map((c) => para(c.text, { bold: c.bold ?? bold, size })).join("")
+    : para(content, { bold, size, spacingAfter: 20 });
+  return `<w:tc><w:tcPr><w:tcW w:w="${widthTwip}" w:type="dxa"/>${shade ? `<w:shd w:val="clear" w:color="auto" w:fill="${shade}"/>` : ""}<w:tcMar><w:top w:w="40" w:type="dxa"/><w:left w:w="80" w:type="dxa"/><w:bottom w:w="40" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tcMar><w:vAlign w:val="center"/></w:tcPr>${body || para("", { size })}</w:tc>`;
+}
+
+function table(rows, colWidths) {
+  const total = colWidths.reduce((a, b) => a + b, 0);
+  const grid = colWidths.map((w) => `<w:gridCol w:w="${w}"/>`).join("");
+  const body = rows.map((r) =>
+    `<w:tr>${r.map((c, i) => cell(c.content, colWidths[i], c)).join("")}</w:tr>`
+  ).join("");
+  return `<w:tbl><w:tblPr><w:tblW w:w="${total}" w:type="dxa"/><w:tblBorders>${["top","left","bottom","right","insideH","insideV"].map((s)=>`<w:${s} w:val="single" w:sz="4" w:space="0" w:color="999999"/>`).join("")}</w:tblBorders><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid>${grid}</w:tblGrid>${body}</w:tbl>`;
+}
+
+function labelValueTable(pairs) {
+  const L = 3000, R = TWIP.full - L;
+  return table(
+    pairs.map(([l, v]) => [
+      { content: l, bold: true, shade: "F2F2F2" },
+      { content: v || "" },
+    ]),
+    [L, R]
+  );
+}
+
+function buildDocumentXml(kind, s) {
+  const isCAR = kind === "CAR";
+  const title = isCAR ? "Corrective Action Report (CAR)" : "Nonconformance Report (NCR)";
+  const footer = isCAR ? "CAR Form Rev A, dated 12.18.2025" : "NCR Form Rev 4, dated 12.18.2025";
+  const parts = [];
+
+  // logo + title
+  parts.push(
+    `<w:p><w:pPr><w:spacing w:after="40"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:noProof/></w:rPr><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="2743200" cy="675640"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="1" name="Logo"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="1" name="Logo"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rId100"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="2743200" cy="675640"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`
+  );
+  parts.push(
+    `<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="8" w:space="4" w:color="4472C4"/></w:pBdr><w:spacing w:after="180"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:color w:val="1F4E5F"/><w:sz w:val="44"/></w:rPr><w:t xml:space="preserve">${esc(title)}</w:t></w:r></w:p>`
+  );
+
+  // header grid (6 col: label,val,label,val,label,val) — mirror template
+  const h = s.header;
+  const hw = [1400, 1720, 1560, 1560, 1360, 1760];
+  const hrow = (a, b, c, d, e, f) => [
+    { content: a, bold: true, shade: "F2F2F2" }, { content: h[b] || "" },
+    { content: c, bold: true, shade: "F2F2F2" }, { content: h[d] || "" },
+    { content: e, bold: true, shade: "F2F2F2" }, { content: h[f] || "" },
+  ];
+  parts.push(table([
+    hrow(isCAR ? "CAR #" : "NCR #", "ncr", "Date", "date", "Customer", "customer"),
+    // second row: Part / BHT / PO — but template puts PO top-right; keep customer/spec/proc ordering close
+  ], hw));
+  // Simpler: rebuild the exact header layout in one table
+  parts.pop();
+  parts.push(table([
+    [
+      { content: isCAR ? "CAR #" : "NCR #", bold: true, shade: "F2F2F2" }, { content: h.ncr },
+      { content: "Date", bold: true, shade: "F2F2F2" }, { content: h.date },
+      { content: "Customer", bold: true, shade: "F2F2F2" }, { content: h.customer },
+      { content: "PO #", bold: true, shade: "F2F2F2" }, { content: h.po },
+    ],
+    [
+      { content: "Part No.", bold: true, shade: "F2F2F2" }, { content: h.part },
+      { content: "BHT #", bold: true, shade: "F2F2F2" }, { content: h.bht },
+      { content: "Spec(s)", bold: true, shade: "F2F2F2" }, { content: h.spec },
+      { content: "Process", bold: true, shade: "F2F2F2" }, { content: h.process },
+    ],
+    [
+      { content: "Detected By", bold: true, shade: "F2F2F2" }, { content: h.detectedBy },
+      { content: "Stage", bold: true, shade: "F2F2F2" }, { content: h.stage },
+      { content: "Location", bold: true, shade: "F2F2F2" }, { content: h.location },
+      { content: "Ref (WO/Trav)", bold: true, shade: "F2F2F2" }, { content: h.reference },
+    ],
+  ], [1250, 1090, 1090, 1090, 1180, 1090, 1490, 1090]));
+
+  let n = 0;
+  const next = () => ++n;
+
+  // 1) Description
+  parts.push(sectionHeading(`${next()}) Description of ${isCAR ? "Issue" : "Nonconformance"}`, isCAR ? "(AS9100 10.2; 8.7, NADCAP AC7004)" : "(AS9100 8.7; Nadcap AC7004)"));
+  if (isCAR) {
+    parts.push(para(s.actualCondition || "", { size: 20 }));
+  } else {
+    parts.push(table([
+      [{ content: "Requirement", bold: true, shade: "F2F2F2" }, { content: "Actual Condition / Evidence", bold: true, shade: "F2F2F2" }, { content: "Records/Attachments", bold: true, shade: "F2F2F2" }],
+      [{ content: s.requirement }, { content: s.actualCondition }, { content: (s.records[0] && s.records[0].ref) || "" }],
+    ], [3120, 3120, 3120]));
+    if (s.qtyAffected || s.serialLot) {
+      parts.push(labelValueTable([
+        ["Quantity Affected", s.qtyAffected],
+        ["Serial / Lot Range", s.serialLot],
+      ]));
+    }
+  }
+
+  // 2) Containment
+  parts.push(sectionHeading(`${next()}) Immediate Containment${isCAR ? " Actions" : " & Segregation"}`, isCAR ? "(AS9100 8.7.1, NADCAP AC7004)" : "(AS9100 8.7.1; 8.1.3)"));
+  if (isCAR) {
+    parts.push(labelValueTable([
+      ["Containment Action", s.containment],
+      ["Date Implemented", s.containmentDate],
+      ["Responsible Person", s.containmentOwner],
+    ]));
+  } else {
+    parts.push(labelValueTable([
+      ["Hold/Segregation Method", s.holdMethod || s.containment],
+      ["Quantity Affected / Serial-Lot Range", [s.qtyAffected, s.serialLot].filter(Boolean).join("  /  ")],
+      ["Customer Notified (Y/N & date)", s.customerNotified],
+    ]));
+  }
+
+  // NCR disposition
+  if (!isCAR) {
+    parts.push(sectionHeading(`${next()}) Disposition`, "(AS9100 8.7.1)"));
+    parts.push(table([
+      [{ content: "Disposition", bold: true, shade: "F2F2F2" }, { content: "Authority/Approval", bold: true, shade: "F2F2F2" }, { content: "Rationale/Notes", bold: true, shade: "F2F2F2" }],
+      ...DISPOSITIONS.map((d) => [
+        { content: `${s.disposition === d ? "\u2612" : "\u2610"} ${d}` },
+        { content: s.disposition === d ? s.dispositionAuthority : "" },
+        { content: s.disposition === d ? s.dispositionRationale : "" },
+      ]),
+    ], [3120, 3120, 3120]));
+  }
+
+  // RCA
+  parts.push(sectionHeading(`${next()}) Root Cause Analysis`, "(AS9100 10.2; Nadcap AC7004)"));
+  parts.push(para("Structured method (5-Whys / Fishbone). Identify systemic cause, not just symptom.", { italic: true, size: 18, color: "666666" }));
+  parts.push(labelValueTable([
+    ["Problem Statement", s.problem],
+    ...s.whys.map((w, i) => [`Why ${i + 1}?`, w]),
+  ]));
+
+  // Corrective action plan (CAR only)
+  if (isCAR) {
+    parts.push(sectionHeading(`${next()}) Corrective Action Plan`, "(AS9100 10.2.1)"));
+    parts.push(table([
+      [{ content: "Action", bold: true, shade: "F2F2F2" }, { content: "Owner", bold: true, shade: "F2F2F2" }, { content: "Due Date", bold: true, shade: "F2F2F2" }],
+      ...s.correctiveActions.map((a) => [{ content: a.action }, { content: a.owner }, { content: a.due }]),
+    ], [4680, 2340, 2340]));
+  }
+
+  // Preventive
+  parts.push(sectionHeading(`${next()}) ${isCAR ? "Preventive Action" : "Preventive/Systemic Actions"}`, isCAR ? "(AS9100 10.2.1 f,g)" : "(AS9100 10.2.1; 8.1.2)"));
+  parts.push(table([
+    [{ content: isCAR ? "Preventive Action" : "Process/Procedure/Training change", bold: true, shade: "F2F2F2" }, { content: "Document No./Rev", bold: true, shade: "F2F2F2" }, { content: "Effective Date", bold: true, shade: "F2F2F2" }],
+    ...s.preventive.map((p) => [{ content: p.action }, { content: p.docRev }, { content: p.effective }]),
+  ], [4680, 2340, 2340]));
+
+  // Verification
+  parts.push(sectionHeading(`${next()}) Effectiveness Verification`, isCAR ? "(AS9100 10.2.1, NADCAP AC7004)" : "(AS9100 10.2.1 h)"));
+  parts.push(labelValueTable([
+    ["Verification Method", s.verifyMethod],
+    ["Results / Evidence", s.verifyResults],
+    ["Verified By & Date", s.verifyBy],
+  ]));
+
+  // Records
+  parts.push(sectionHeading(`${next()}) Records & Attachments`, isCAR ? "(AS9100 7.5)" : "(AS9100 7.5; Nadcap AC7004)"));
+  parts.push(table([
+    [{ content: "Record Type", bold: true, shade: "F2F2F2" }, { content: "Reference/ID", bold: true, shade: "F2F2F2" }],
+    ...s.records.map((r) => [{ content: r.type }, { content: r.ref }]),
+  ], [4680, 4680]));
+
+  // Notes
+  parts.push(sectionHeading(`${next()}) Notes`, ""));
+  parts.push(para(s.notes || "", { size: 20 }));
+
+  // Approvals
+  parts.push(sectionHeading(`${next()}) Approvals & Closure`, ""));
+  parts.push(labelValueTable([
+    ["Prepared By", ""],
+    ["Quality Approval", ""],
+    ["Customer Approval (if required)", ""],
+    ...(isCAR ? [] : [["Final Closure", ""]]),
+  ]));
+
+  const sectPr = `<w:sectPr><w:footerReference w:type="default" r:id="rId101"/><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1080" w:right="1080" w:bottom="1080" w:left="1080" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>`;
+
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><w:body>${parts.join("")}${sectPr}</w:body></w:document>`;
+}
+
+// ---- self-contained ZIP writer (store method, no compression, no CDN) ----
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(bytes) {
+  let c = 0xffffffff;
+  for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+function strBytes(s) { return new TextEncoder().encode(s); }
+function b64ToUint8(b64) {
+  const clean = String(b64).replace(/[^A-Za-z0-9+/=]/g, "");
+  const bin = atob(clean);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return arr;
+}
+async function deflateRaw(bytes) {
+  if (typeof CompressionStream !== "undefined") {
+    try {
+      const cs = new CompressionStream("deflate-raw");
+      const stream = new Blob([bytes]).stream().pipeThrough(cs);
+      const buf = await new Response(stream).arrayBuffer();
+      return new Uint8Array(buf);
+    } catch (e) { /* fall through to stored */ }
+  }
+  return null; // signals: store this entry
+}
+
+async function makeZip(files) {
+  const chunks = [], central = [];
+  let offset = 0;
+  const enc = new TextEncoder();
+  for (const f of files) {
+    const nameBytes = enc.encode(f.name);
+    const raw = f.data;
+    const crc = crc32(raw), usize = raw.length;
+    let comp = await deflateRaw(raw);
+    let method = 8;
+    if (!comp) { comp = raw; method = 0; } // fallback to stored if no CompressionStream
+    const csize = comp.length;
+    const lh = new Uint8Array(30 + nameBytes.length);
+    const dv = new DataView(lh.buffer);
+    dv.setUint32(0, 0x04034b50, true); dv.setUint16(4, 20, true);
+    dv.setUint16(6, 0, true); dv.setUint16(8, method, true);
+    dv.setUint16(10, 0, true); dv.setUint16(12, 0x21, true);
+    dv.setUint32(14, crc, true); dv.setUint32(18, csize, true);
+    dv.setUint32(22, usize, true); dv.setUint16(26, nameBytes.length, true);
+    dv.setUint16(28, 0, true); lh.set(nameBytes, 30);
+    chunks.push(lh, comp);
+    const cd = new Uint8Array(46 + nameBytes.length);
+    const cv = new DataView(cd.buffer);
+    cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true);
+    cv.setUint16(6, 20, true); cv.setUint16(8, 0, true);
+    cv.setUint16(10, method, true); cv.setUint16(12, 0, true);
+    cv.setUint16(14, 0x21, true); cv.setUint32(16, crc, true);
+    cv.setUint32(20, csize, true); cv.setUint32(24, usize, true);
+    cv.setUint16(28, nameBytes.length, true); cv.setUint16(30, 0, true);
+    cv.setUint16(32, 0, true); cv.setUint16(34, 0, true);
+    cv.setUint16(36, 0, true); cv.setUint32(38, 0, true);
+    cv.setUint32(42, offset, true); cd.set(nameBytes, 46);
+    central.push(cd);
+    offset += lh.length + comp.length;
+  }
+  const cdStart = offset;
+  let cdSize = 0;
+  for (const c of central) { chunks.push(c); cdSize += c.length; }
+  const eocd = new Uint8Array(22);
+  const ev = new DataView(eocd.buffer);
+  ev.setUint32(0, 0x06054b50, true); ev.setUint16(8, files.length, true);
+  ev.setUint16(10, files.length, true); ev.setUint32(12, cdSize, true);
+  ev.setUint32(16, cdStart, true);
+  chunks.push(eocd);
+  let total = 0; for (const c of chunks) total += c.length;
+  const out = new Uint8Array(total);
+  let p = 0; for (const c of chunks) { out.set(c, p); p += c.length; }
+  return out;
+}
+
+async function exportDocx(kind, state) {
+  const footerText = kind === "CAR" ? "CAR Form Rev A, dated 12.18.2025" : "NCR Form Rev 4, dated 12.18.2025";
+  const files = [
+    { name: "[Content_Types].xml", data: strBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpeg" ContentType="image/jpeg"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/><Override PartName="/word/fontTable.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/></Types>`) },
+    { name: "_rels/.rels", data: strBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>`) },
+    { name: "docProps/core.xml", data: strBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>Nonconformance / Corrective Action Report</dc:title><dc:creator>Bennett Heat Treating &amp; Brazing</dc:creator><cp:lastModifiedBy>Bennett Heat Treating &amp; Brazing</cp:lastModifiedBy></cp:coreProperties>`) },
+    { name: "docProps/app.xml", data: strBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>Bennett NCR/CAR Generator</Application></Properties>`) },
+    { name: "word/_rels/document.xml.rels", data: strBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/fontTable" Target="fontTable.xml"/><Relationship Id="rId100" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/logo.jpeg"/><Relationship Id="rId101" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/></Relationships>`) },
+    { name: "word/document.xml", data: strBytes(buildDocumentXml(kind, state)) },
+    { name: "word/styles.xml", data: strBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style><w:style w:type="character" w:default="1" w:styleId="DefaultParagraphFont"><w:name w:val="Default Paragraph Font"/><w:uiPriority w:val="1"/><w:semiHidden/><w:unhideWhenUsed/></w:style><w:style w:type="table" w:default="1" w:styleId="TableNormal"><w:name w:val="Normal Table"/><w:uiPriority w:val="99"/><w:semiHidden/><w:unhideWhenUsed/><w:tblPr><w:tblInd w:w="0" w:type="dxa"/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="108" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="108" w:type="dxa"/></w:tblCellMar></w:tblPr></w:style></w:styles>`) },
+    { name: "word/settings.xml", data: strBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:defaultTabStop w:val="720"/><w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/></w:compat></w:settings>`) },
+    { name: "word/fontTable.xml", data: strBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:fonts xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:font w:name="Calibri"><w:charset w:val="00"/><w:family w:val="swiss"/><w:pitch w:val="variable"/></w:font><w:font w:name="Times New Roman"><w:charset w:val="00"/><w:family w:val="roman"/><w:pitch w:val="variable"/></w:font></w:fonts>`) },
+    { name: "word/footer1.xml", data: strBytes(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:rPr><w:sz w:val="16"/><w:color w:val="666666"/></w:rPr></w:pPr><w:r><w:rPr><w:sz w:val="16"/><w:color w:val="666666"/></w:rPr><w:t xml:space="preserve">${esc(footerText)}</w:t></w:r></w:p></w:ftr>`) },
+    { name: "word/media/logo.jpeg", data: b64ToUint8(LOGO_B64) },
+  ];
+  const zipBytes = await makeZip(files);
+  const blob = new Blob([zipBytes], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const id = state.header.ncr || state.header.bht || "draft";
+  a.href = url;
+  a.download = `${kind}_${id}_${state.header.date || ""}`.replace(/[^\w.-]+/g, "_") + ".docx";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+// ---- PDF export via print window (no dependency) ----
+function exportPdf(kind, state) {
+  const isCAR = kind === "CAR";
+  const h = state.header;
+  const title = isCAR ? "Corrective Action Report (CAR)" : "Nonconformance Report (NCR)";
+  const footer = isCAR ? "CAR Form Rev A, dated 12.18.2025" : "NCR Form Rev 4, dated 12.18.2025";
+  const esc2 = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
+  const hcell = (l, v) => `<td class="lbl">${l}</td><td>${esc2(v)}</td>`;
+  const lvRows = (pairs) => pairs.map(([l, v]) => `<tr><td class="lbl">${l}</td><td>${esc2(v)}</td></tr>`).join("");
+  const gridRows = (headers, rows) =>
+    `<tr>${headers.map((x) => `<th>${x}</th>`).join("")}</tr>` +
+    rows.map((r) => `<tr>${r.map((c) => `<td>${esc2(c)}</td>`).join("")}</tr>`).join("");
+
+  let n = 0; const next = () => ++n;
+  const sec = (t, cite) => `<h2>${t} <span class="cite">${cite || ""}</span></h2>`;
+  let body = "";
+
+  body += `<table class="hdr">
+    <tr>${hcell(isCAR ? "CAR #" : "NCR #", h.ncr)}${hcell("Date", h.date)}${hcell("Customer", h.customer)}${hcell("PO #", h.po)}</tr>
+    <tr>${hcell("Part No.", h.part)}${hcell("BHT #", h.bht)}${hcell("Spec(s)", h.spec)}${hcell("Process", h.process)}</tr>
+    <tr>${hcell("Detected By", h.detectedBy)}${hcell("Stage", h.stage)}${hcell("Location", h.location)}${hcell("Ref (WO/Trav)", h.reference)}</tr>
+  </table>`;
+
+  body += sec(`${next()}) Description of ${isCAR ? "Issue" : "Nonconformance"}`, isCAR ? "(AS9100 10.2; 8.7 · AC7004)" : "(AS9100 8.7 · AC7004)");
+  if (isCAR) {
+    body += `<p class="free">${esc2(state.actualCondition)}</p>`;
+  } else {
+    body += `<table>${gridRows(["Requirement", "Actual Condition / Evidence", "Records/Attachments"], [[state.requirement, state.actualCondition, (state.records[0] && state.records[0].ref) || ""]])}</table>`;
+    if (state.qtyAffected || state.serialLot) body += `<table>${lvRows([["Quantity Affected", state.qtyAffected], ["Serial / Lot Range", state.serialLot]])}</table>`;
+  }
+
+  body += sec(`${next()}) Immediate Containment${isCAR ? " Actions" : " & Segregation"}`, isCAR ? "(AS9100 8.7.1 · AC7004)" : "(AS9100 8.7.1; 8.1.3)");
+  body += `<table>${isCAR
+    ? lvRows([["Containment Action", state.containment], ["Date Implemented", state.containmentDate], ["Responsible Person", state.containmentOwner]])
+    : lvRows([["Hold/Segregation Method", state.holdMethod || state.containment], ["Quantity / Serial-Lot", [state.qtyAffected, state.serialLot].filter(Boolean).join("  /  ")], ["Customer Notified (Y/N & date)", state.customerNotified]])
+  }</table>`;
+
+  if (!isCAR) {
+    body += sec(`${next()}) Disposition`, "(AS9100 8.7.1)");
+    body += `<table>${gridRows(["Disposition", "Authority/Approval", "Rationale/Notes"],
+      DISPOSITIONS.map((d) => [`${state.disposition === d ? "☒" : "☐"} ${d}`, state.disposition === d ? state.dispositionAuthority : "", state.disposition === d ? state.dispositionRationale : ""]))}</table>`;
+  }
+
+  body += sec(`${next()}) Root Cause Analysis`, "(AS9100 10.2 · AC7004)");
+  body += `<table>${lvRows([["Problem Statement", state.problem], ...state.whys.map((w, i) => [`Why ${i + 1}?`, w])])}</table>`;
+
+  if (isCAR) {
+    body += sec(`${next()}) Corrective Action Plan`, "(AS9100 10.2.1)");
+    body += `<table>${gridRows(["Action", "Owner", "Due Date"], state.correctiveActions.map((a) => [a.action, a.owner, a.due]))}</table>`;
+  }
+
+  body += sec(`${next()}) ${isCAR ? "Preventive Action" : "Preventive / Systemic Actions"}`, isCAR ? "(AS9100 10.2.1 f,g)" : "(AS9100 10.2.1; 8.1.2)");
+  body += `<table>${gridRows([isCAR ? "Preventive Action" : "Process/Procedure/Training change", "Document No./Rev", "Effective Date"], state.preventive.map((p) => [p.action, p.docRev, p.effective]))}</table>`;
+
+  body += sec(`${next()}) Effectiveness Verification`, isCAR ? "(AS9100 10.2.1 · AC7004)" : "(AS9100 10.2.1 h)");
+  body += `<table>${lvRows([["Verification Method", state.verifyMethod], ["Results / Evidence", state.verifyResults], ["Verified By & Date", state.verifyBy]])}</table>`;
+
+  body += sec(`${next()}) Records & Attachments`, "(AS9100 7.5)");
+  body += `<table>${gridRows(["Record Type", "Reference/ID"], state.records.map((r) => [r.type, r.ref]))}</table>`;
+
+  body += sec(`${next()}) Notes`, "");
+  body += `<p class="free">${esc2(state.notes)}</p>`;
+
+  body += sec(`${next()}) Approvals & Closure`, "");
+  body += `<table>${lvRows([["Prepared By", ""], ["Quality Approval", ""], ["Customer Approval (if required)", ""], ...(isCAR ? [] : [["Final Closure", ""]])])}</table>`;
+
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc2(title)}</title>
+  <style>
+    @page { size: letter; margin: 0.6in; }
+    * { box-sizing: border-box; }
+    body { font-family: Calibri, Arial, sans-serif; color: #1a1a1a; font-size: 10.5pt; margin: 0; }
+    .head { text-align:center; border-bottom: 2px solid #4472C4; padding-bottom: 6px; margin-bottom: 12px; }
+    .head img { height: 46px; }
+    .head h1 { color:#1F4E5F; font-weight:600; font-size:22pt; margin:6px 0 0; }
+    h2 { font-size:11pt; margin:14px 0 4px; }
+    .cite { font-style:italic; font-weight:normal; color:#777; font-size:8pt; }
+    table { width:100%; border-collapse:collapse; margin:2px 0 4px; table-layout:fixed; }
+    td, th { border:1px solid #999; padding:3px 5px; vertical-align:top; word-wrap:break-word; }
+    th { background:#F2F2F2; text-align:left; font-size:9.5pt; }
+    .lbl { background:#F2F2F2; font-weight:bold; width:22%; }
+    .hdr td { font-size:9pt; } .hdr .lbl { width:11%; }
+    .free { border:1px solid #999; min-height:40px; padding:5px; margin:2px 0 4px; }
+    .foot { position:fixed; bottom:0.3in; left:0.6in; font-size:8pt; color:#777; }
+  </style></head><body>
+  <div class="head"><img src="data:image/jpeg;base64,${LOGO_B64}"><h1>${esc2(title)}</h1></div>
+  ${body}
+  <div class="foot">${esc2(footer)}</div>
+  </body></html>`;
+
+  // Print via a hidden in-page iframe so no popup window is needed (avoids popup blocker).
+  const old = document.getElementById("__print_frame__");
+  if (old) old.remove();
+  const iframe = document.createElement("iframe");
+  iframe.id = "__print_frame__";
+  iframe.setAttribute("aria-hidden", "true");
+  iframe.style.position = "fixed";
+  iframe.style.right = "0";
+  iframe.style.bottom = "0";
+  iframe.style.width = "0";
+  iframe.style.height = "0";
+  iframe.style.border = "0";
+  iframe.onload = () => {
+    // small delay so the logo image inside the frame is painted before printing
+    setTimeout(() => {
+      const win = iframe.contentWindow;
+      if (!win) {
+        errMsg = "Your browser blocked the print view. Use the Word export instead.";
+        render();
+        return;
+      }
+      try {
+        win.focus();
+        win.print();
+      } catch (e) {
+        errMsg = "Couldn't open the print dialog. Use the Word export instead. (" + (e.message || e) + ")";
+        render();
+      }
+    }, 350);
+  };
+  iframe.srcdoc = html;
+  document.body.appendChild(iframe);
+}
+
+// ===================================================================
+// Standalone vanilla-JS UI (no framework, no build step)
+// ===================================================================
+let kind = "NCR";
+let state = blankState(kind);
+let busy = false, busyMsg = "", errMsg = "";
+
+const $ = (tag, attrs = {}, kids = []) => {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") el.className = v;
+    else if (k === "html") el.innerHTML = v;
+    else if (k.startsWith("on") && typeof v === "function") el.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (v !== null && v !== undefined && v !== false) el.setAttribute(k, v);
+  }
+  (Array.isArray(kids) ? kids : [kids]).forEach((c) => {
+    if (c == null || c === false) return;
+    el.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+  });
+  return el;
+};
+
+function field(label, value, onInput, opts = {}) {
+  const input = opts.area
+    ? $("textarea", { rows: opts.area })
+    : $("input", { type: "text" });
+  input.value = value || "";
+  input.addEventListener("input", (e) => onInput(e.target.value));
+  const span = $("span", {}, [label]);
+  if (opts.hint) span.appendChild($("span", { class: "hint" }, [`(${opts.hint})`]));
+  const lab = $("label", { class: "f" + (opts.wide ? " wide" : "") }, [span, input]);
+  return lab;
+}
+
+function rowEditor(listKey, cols) {
+  const wrap = $("div", { class: "rows" });
+  state[listKey].forEach((row, i) => {
+    const cells = $("div", { class: "cells" });
+    cells.style.gridTemplateColumns = cols.map((c) => (c[2] ? "2fr" : "1fr")).join(" ");
+    cols.forEach(([f, label]) => {
+      const inp = $("input", { type: "text", placeholder: label });
+      inp.value = row[f] || "";
+      inp.addEventListener("input", (e) => { state[listKey][i][f] = e.target.value; });
+      cells.appendChild(inp);
+    });
+    const rm = $("button", { class: "rm", title: "Remove row", onclick: () => {
+      if (state[listKey].length === 1) return;
+      state[listKey].splice(i, 1); render();
+    } }, ["\u2715"]);
+    if (state[listKey].length === 1) rm.disabled = true;
+    wrap.appendChild($("div", { class: "row" }, [cells, rm]));
+  });
+  const blank = Object.fromEntries(cols.map((c) => [c[0], ""]));
+  wrap.appendChild($("button", { class: "addrow", onclick: () => { state[listKey].push({ ...blank }); render(); } }, ["+ Add row"]));
+  return wrap;
+}
+
+function card(titleText, cite, bodyNodes) {
+  const h = $("h3", {}, [titleText]);
+  if (cite) h.appendChild($("span", { class: "cite" }, [cite]));
+  return $("section", { class: "card" }, [h, ...bodyNodes]);
+}
+
+async function runExport() {
+  errMsg = ""; busy = true; busyMsg = "Building .docx\u2026"; render();
+  try { await exportDocx(kind, state); }
+  catch (e) { errMsg = "Word export failed: " + (e.message || e); }
+  finally { busy = false; busyMsg = ""; render(); }
+}
+// ---- Load from Word: read a completed generator .docx back into the form ----
+// Uses native DecompressionStream so it works fully offline (no libraries).
+async function inflateRaw(bytes) {
+  const ds = new DecompressionStream("deflate-raw");
+  const stream = new Blob([bytes]).stream().pipeThrough(ds);
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+async function readDocxEntry(fileBytes, wantName) {
+  const dv = new DataView(fileBytes.buffer, fileBytes.byteOffset, fileBytes.byteLength);
+  const dec = new TextDecoder();
+  let off = 0;
+  while (off + 4 <= fileBytes.length) {
+    if (dv.getUint32(off, true) !== 0x04034b50) break;
+    const method = dv.getUint16(off + 8, true);
+    const csize = dv.getUint32(off + 18, true);
+    const nlen = dv.getUint16(off + 26, true);
+    const elen = dv.getUint16(off + 28, true);
+    const name = dec.decode(fileBytes.subarray(off + 30, off + 30 + nlen));
+    const dataStart = off + 30 + nlen + elen;
+    const comp = fileBytes.subarray(dataStart, dataStart + csize);
+    if (name === wantName) return method === 0 ? comp : await inflateRaw(comp);
+    off = dataStart + csize;
+  }
+  throw new Error("word/document.xml not found — is this a Word file?");
+}
+function unescapeXml(s) {
+  return s.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n));
+}
+function parseDocxTables(xml) {
+  const tables = [];
+  const tbls = xml.match(/<w:tbl>[\s\S]*?<\/w:tbl>/g) || [];
+  for (const tblXml of tbls) {
+    const rows = [];
+    const trs = tblXml.match(/<w:tr\b[\s\S]*?<\/w:tr>/g) || [];
+    for (const trXml of trs) {
+      const cells = [];
+      const tcs = trXml.match(/<w:tc\b[\s\S]*?<\/w:tc>/g) || [];
+      for (const tcXml of tcs) {
+        const texts = [...tcXml.matchAll(/<w:t\b[^>]*>([\s\S]*?)<\/w:t>/g)].map((x) => unescapeXml(x[1]));
+        cells.push(texts.join("").trim());
+      }
+      if (cells.length) rows.push(cells);
+    }
+    tables.push(rows);
+  }
+  return tables;
+}
+async function loadFromWord(file) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const xml = new TextDecoder().decode(await readDocxEntry(bytes, "word/document.xml"));
+  const tables = parseDocxTables(xml);
+  if (!tables.length) throw new Error("No tables found — not a generator form?");
+
+  // detect kind from the title text
+  const isCar = /Corrective Action Report/i.test(xml);
+  const k = isCar ? "CAR" : "NCR";
+
+  const grid = tables[0].flat();
+  const hmap = {};
+  for (let i = 0; i < grid.length; i += 2) if (grid[i]) hmap[grid[i].toLowerCase()] = grid[i + 1] || "";
+  const H = (key) => { key = key.toLowerCase(); for (const kk in hmap) { if (kk.startsWith(key)) return hmap[kk]; } return ""; };
+  const findT = (label) => tables.find((t) => t.length && (t[0][0] || "").toLowerCase().includes(label.toLowerCase()));
+
+  // start clean for the detected kind, keep nothing stale
+  kind = k;
+  state = blankState(k);
+
+  // header
+  state.header.ncr = H("ncr #") || H("car #");
+  state.header.date = H("date");
+  state.header.customer = H("customer");
+  state.header.po = H("po");
+  state.header.part = H("part no");
+  state.header.bht = H("bht");
+  state.header.spec = H("spec");
+  state.header.process = H("process");
+  state.header.detectedBy = H("detected");
+  state.header.stage = H("stage");
+  state.header.location = H("location");
+  state.header.reference = H("ref");
+
+  // description
+  const reqT = findT("requirement");
+  if (isCar) {
+    state.actualCondition = firstParaAfter(xml, "Description of Issue");
+  } else if (reqT && reqT.length > 1) {
+    state.requirement = reqT[1][0] || "";
+    state.actualCondition = reqT[1][1] || "";
+  }
+
+  // qty / serial
+  const qtyT = findT("quantity affected");
+  if (qtyT) {
+    const q = qtyT.find((r) => /quantity affected/i.test(r[0] || ""));
+    const s = qtyT.find((r) => /serial/i.test(r[0] || ""));
+    if (q) state.qtyAffected = q[1] || "";
+    if (s) state.serialLot = s[1] || "";
+  }
+
+  // containment
+  const contCar = findT("containment action");
+  const contNcr = findT("hold/segregation");
+  if (isCar && contCar) {
+    contCar.forEach((r) => {
+      if (/containment action/i.test(r[0])) state.containment = r[1] || "";
+      if (/date implemented/i.test(r[0])) state.containmentDate = r[1] || "";
+      if (/responsible/i.test(r[0])) state.containmentOwner = r[1] || "";
+    });
+  } else if (contNcr) {
+    contNcr.forEach((r) => {
+      if (/hold\/segregation/i.test(r[0])) state.holdMethod = r[1] || "";
+      if (/customer notified/i.test(r[0])) state.customerNotified = r[1] || "";
+    });
+  }
+
+  // disposition (NCR)
+  const dispT = findT("disposition");
+  if (dispT) for (const r of dispT) {
+    if (/[\u2612\u2611\u2713\u2714]/.test(r[0] || "")) {
+      state.disposition = r[0].replace(/[\u2610\u2612\u2611\u2713\u2714]/g, "").trim();
+      state.dispositionAuthority = r[1] || "";
+      state.dispositionRationale = r[2] || "";
+      break;
+    }
+  }
+
+  // RCA
+  const whyT = findT("problem statement");
+  if (whyT) {
+    state.problem = whyT[0][1] || "";
+    const w = ["", "", "", "", ""];
+    whyT.forEach((r) => { const m = (r[0] || "").toLowerCase().match(/why\s*(\d)/); if (m) w[+m[1] - 1] = r[1] || ""; });
+    state.whys = w;
+  }
+
+  // corrective actions (CAR) — match the table whose header is Action / Owner / Due Date
+  const capT = tables.find((t) => t.length && (t[0][0] || "").toLowerCase() === "action" && /owner/i.test(t[0][1] || ""));
+  if (isCar && capT && capT.length > 1) {
+    state.correctiveActions = capT.slice(1).filter((r) => (r[0] || r[1] || r[2] || "").trim())
+      .map((r) => ({ action: r[0] || "", owner: r[1] || "", due: r[2] || "" }));
+    if (!state.correctiveActions.length) state.correctiveActions = [{ action: "", owner: "", due: "" }];
+  }
+
+  // preventive
+  const prevT = findT("preventive action") || findT("process/procedure");
+  if (prevT && prevT.length > 1) {
+    state.preventive = prevT.slice(1).filter((r) => (r[0] || r[1] || r[2] || "").trim())
+      .map((r) => ({ action: r[0] || "", docRev: r[1] || "", effective: r[2] || "" }));
+    if (!state.preventive.length) state.preventive = [{ action: "", docRev: "", effective: "" }];
+  }
+
+  // verification
+  const verT = findT("verification method");
+  if (verT) verT.forEach((r) => {
+    if (/verification method/i.test(r[0])) state.verifyMethod = r[1] || "";
+    if (/results/i.test(r[0])) state.verifyResults = r[1] || "";
+    if (/verified by/i.test(r[0])) state.verifyBy = r[1] || "";
+  });
+
+  // records
+  const recT = findT("record type");
+  if (recT && recT.length > 1) {
+    state.records = recT.slice(1).filter((r) => (r[0] || r[1] || "").trim())
+      .map((r) => ({ type: r[0] || "", ref: r[1] || "" }));
+    if (!state.records.length) state.records = [{ type: "", ref: "" }];
+  }
+
+  render();
+}
+function firstParaAfter(xml, heading) {
+  const idx = xml.indexOf(heading);
+  if (idx < 0) return "";
+  // start just past the heading text so we don't re-read the heading paragraph
+  const after = xml.slice(idx + heading.length);
+  const paras = [...after.matchAll(/<w:p\b[\s\S]*?<\/w:p>/g)];
+  for (let i = 0; i < paras.length; i++) {
+    const texts = [...paras[i][0].matchAll(/<w:t\b[^>]*>([\s\S]*?)<\/w:t>/g)].map((x) => unescapeXml(x[1]));
+    const t = texts.join("").trim();
+    if (!t) continue;
+    if (/^\d\)\s/.test(t)) break; // hit the next numbered section — description was empty
+    return t;
+  }
+  return "";
+}
+async function runLoadWord(input) {
+  const file = input.files[0]; input.value = "";
+  if (!file) return;
+  errMsg = ""; busy = true; busyMsg = "Reading Word form\u2026"; render();
+  try {
+    await loadFromWord(file);
+    busyMsg = "Loaded \u2014 review the fields, then export or send to tracker."; render();
+    setTimeout(() => { busyMsg = ""; render(); }, 3500);
+  } catch (e) {
+    errMsg = "Couldn't read that file: " + (e.message || e) + " \u2014 make sure it's a Word form made by this generator.";
+    render();
+  } finally { busy = false; }
+}
+
+function runPdf() {
+  errMsg = "";
+  try { exportPdf(kind, state); }
+  catch (e) { errMsg = "PDF export failed: " + (e.message || e); render(); }
+}
+
+// ---- Send to tracker: write a .ncrcar file the tracker imports as one row ----
+// Field shape matches what the tracker's parser produces, so its existing
+// add-row logic maps everything (including the 5-Why chain) with no drift.
+function exportTracker(kind, state) {
+  const h = state.header;
+  const whys = [...state.whys.slice(0, 5)];
+  whys[5] = [...whys].reverse().find((x) => x && x.trim()) || "";
+  const rec = {
+    kind: kind.toLowerCase(),
+    header: {
+      "NCR #": h.ncr || "",
+      "Date": h.date || "",
+      "Customer": h.customer || "",
+      "PO #": h.po || "",
+      "Part No.": h.part || "",
+      "Process": h.process || "",
+    },
+    description: state.actualCondition || state.requirement || "",
+    qty: state.qtyAffected || "",
+    disposition: state.disposition || "",
+    containment: state.containment || state.holdMethod || "",
+    problem: state.problem || "",
+    whys: whys,
+  };
+  const blob = new Blob([JSON.stringify(rec, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const id = state.header.ncr || state.header.bht || "draft";
+  a.href = url;
+  a.download = `${kind}_${id}`.replace(/[^\w.-]+/g, "_") + ".ncrcar";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+function runTracker() {
+  errMsg = "";
+  try {
+    exportTracker(kind, state);
+    busyMsg = "Saved a tracker file \u2014 open the tracker and use \u201cImport from Generator.\u201d"; render();
+    setTimeout(() => { busyMsg = ""; render(); }, 4000);
+  } catch (e) { errMsg = "Send to tracker failed: " + (e.message || e); render(); }
+}
+
+function switchKind(k) {
+  kind = k;
+  const keepHeader = state.header;
+  state = blankState(k);
+  state.header = keepHeader;
+  render();
+}
+
+function render() {
+  const isCAR = kind === "CAR";
+  const root = document.getElementById("root");
+  root.innerHTML = "";
+
+  // header bar
+  const toggle = $("div", { class: "toggle" }, ["NCR", "CAR"].map((k) =>
+    $("button", { class: kind === k ? "active" : "", onclick: () => switchKind(k) }, [k])));
+  const wordBtn = $("button", { class: "btn btn-sky", onclick: runExport }, [
+    busy && busyMsg.startsWith("Build") ? $("span", { class: "spin" }) : "\u2193", " Word"]);
+  const pdfBtn = $("button", { class: "btn btn-ghost", onclick: runPdf }, ["\uD83D\uDCC4 PDF"]);
+  const trackBtn = $("button", { class: "btn btn-track", onclick: runTracker }, ["\u21A6 Send to tracker"]);
+  const loadInput = $("input", { type: "file", accept: ".docx", id: "__load_word__", style: "display:none" });
+  loadInput.addEventListener("change", (e) => runLoadWord(e.target));
+  const loadBtn = $("button", { class: "btn btn-ghost", onclick: () => loadInput.click() }, [
+    busy && busyMsg.startsWith("Reading") ? $("span", { class: "spin" }) : "\u2191", " Load from Word"]);
+  if (busy) { wordBtn.disabled = true; pdfBtn.disabled = true; trackBtn.disabled = true; loadBtn.disabled = true; }
+
+  const logo = $("img", { src: "data:image/jpeg;base64," + LOGO_B64, alt: "Bennett" });
+  const bar = $("div", { class: "bar" }, [
+    $("div", { class: "left" }, [logo, $("div", { class: "divider" }), toggle]),
+    $("div", { class: "actions" }, [loadBtn, wordBtn, pdfBtn, trackBtn, loadInput]),
+  ]);
+  root.appendChild($("header", { class: "app" }, [bar]));
+
+  const main = $("main", {});
+  main.appendChild($("div", { class: "subtitle" }, ["\uD83D\uDCC4 " + (isCAR ? "Corrective Action Report" : "Nonconformance Report") + " \u2014 fill in the fields, then export to Word or PDF."]));
+
+  if (busyMsg || errMsg) {
+    main.appendChild($("div", { class: "banner " + (errMsg ? "err" : "info") }, [
+      errMsg ? "\u26A0 " : "", errMsg || busyMsg]));
+  }
+
+  // Header card
+  const hgrid = $("div", { class: "grid two" });
+  HEADER_FIELDS.forEach((f) => {
+    const label = (f.key === "ncr" && isCAR) ? "CAR #" : f.label;
+    hgrid.appendChild(field(label, state.header[f.key], (v) => { state.header[f.key] = v; }, { hint: f.hint }));
+  });
+  main.appendChild(card("Header", "", [hgrid]));
+
+  let n = 0; const next = () => ++n;
+
+  // 1) Description
+  {
+    const g = $("div", { class: "grid two" });
+    if (!isCAR) g.appendChild(field("Requirement", state.requirement, (v) => state.requirement = v, { area: 2, wide: true }));
+    g.appendChild(field(isCAR ? "Description of issue" : "Actual condition / evidence", state.actualCondition, (v) => state.actualCondition = v, { area: 3, wide: true }));
+    g.appendChild(field("Qty affected", state.qtyAffected, (v) => state.qtyAffected = v));
+    g.appendChild(field("Serial / lot range", state.serialLot, (v) => state.serialLot = v));
+    main.appendChild(card(`${next()}) Description of ${isCAR ? "Issue" : "Nonconformance"}`, isCAR ? "AS9100 10.2; 8.7 \u00b7 AC7004" : "AS9100 8.7 \u00b7 AC7004", [g]));
+  }
+
+  // 2) Containment
+  {
+    const g = $("div", { class: "grid two" });
+    g.appendChild(field(isCAR ? "Containment action" : "Hold / segregation method", isCAR ? state.containment : state.holdMethod, (v) => { if (isCAR) state.containment = v; else state.holdMethod = v; }, { area: 2, wide: true }));
+    if (isCAR) {
+      g.appendChild(field("Date implemented", state.containmentDate, (v) => state.containmentDate = v));
+      g.appendChild(field("Responsible person", state.containmentOwner, (v) => state.containmentOwner = v));
+    } else {
+      g.appendChild(field("Customer notified (Y/N & date)", state.customerNotified, (v) => state.customerNotified = v, { wide: true }));
+    }
+    main.appendChild(card(`${next()}) Immediate Containment${isCAR ? " Actions" : " & Segregation"}`, isCAR ? "AS9100 8.7.1 \u00b7 AC7004" : "AS9100 8.7.1; 8.1.3", [g]));
+  }
+
+  // NCR disposition
+  if (!isCAR) {
+    const chips = $("div", { class: "chips" }, DISPOSITIONS.map((d) =>
+      $("button", { class: "chip" + (state.disposition === d ? " on" : ""), onclick: () => { state.disposition = state.disposition === d ? "" : d; render(); } }, [(state.disposition === d ? "\u2611 " : "\u2610 ") + d])));
+    const nodes = [chips];
+    if (state.disposition) {
+      const g = $("div", { class: "grid two" });
+      g.style.marginTop = "12px";
+      g.appendChild(field("Authority / approval", state.dispositionAuthority, (v) => state.dispositionAuthority = v));
+      g.appendChild(field("Rationale / notes", state.dispositionRationale, (v) => state.dispositionRationale = v));
+      nodes.push(g);
+    }
+    main.appendChild(card(`${next()}) Disposition`, "AS9100 8.7.1", nodes));
+  }
+
+  // RCA
+  {
+    const g = $("div", { class: "grid" });
+    g.appendChild(field("Problem statement", state.problem, (v) => state.problem = v, { wide: true }));
+    state.whys.forEach((w, i) => g.appendChild(field(`Why ${i + 1}?`, w, (v) => state.whys[i] = v, { wide: true })));
+    main.appendChild(card(`${next()}) Root Cause Analysis`, "AS9100 10.2 \u00b7 AC7004 \u00b7 5-Why", [g]));
+  }
+
+  // CAP (CAR)
+  if (isCAR) {
+    main.appendChild(card(`${next()}) Corrective Action Plan`, "AS9100 10.2.1", [
+      rowEditor("correctiveActions", [["action", "Action", true], ["owner", "Owner"], ["due", "Due date"]])]));
+  }
+
+  // Preventive
+  main.appendChild(card(`${next()}) ${isCAR ? "Preventive Action" : "Preventive / Systemic Actions"}`, isCAR ? "AS9100 10.2.1 f,g" : "AS9100 10.2.1; 8.1.2", [
+    rowEditor("preventive", [["action", isCAR ? "Preventive action" : "Process/procedure/training change", true], ["docRev", "Doc No./Rev"], ["effective", "Effective date"]])]));
+
+  // Verification
+  {
+    const g = $("div", { class: "grid two" });
+    g.appendChild(field("Verification method", state.verifyMethod, (v) => state.verifyMethod = v, { area: 2, wide: true }));
+    g.appendChild(field("Results / evidence", state.verifyResults, (v) => state.verifyResults = v));
+    g.appendChild(field("Verified by & date", state.verifyBy, (v) => state.verifyBy = v));
+    main.appendChild(card(`${next()}) Effectiveness Verification`, isCAR ? "AS9100 10.2.1 \u00b7 AC7004" : "AS9100 10.2.1 h", [g]));
+  }
+
+  // Records
+  main.appendChild(card(`${next()}) Records & Attachments`, "AS9100 7.5", [
+    rowEditor("records", [["type", "Record type"], ["ref", "Reference / ID"]])]));
+
+  // Notes
+  main.appendChild(card(`${next()}) Notes`, "", [field("", state.notes, (v) => state.notes = v, { area: 3, wide: true })]));
+
+  main.appendChild($("p", { class: "foot" }, [
+    (isCAR ? "CAR Form Rev A, dated 12.18.2025" : "NCR Form Rev 4, dated 12.18.2025") + " \u00b7 Approvals block is added to the export for signature."]));
+
+  root.appendChild(main);
+}
+
+render();
+
+</script>
+</body>
+</html>
